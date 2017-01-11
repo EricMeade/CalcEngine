@@ -1,10 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Globalization;
 using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 using CalcEngine.Functions;
 
 namespace CalcEngine
@@ -62,7 +59,8 @@ namespace CalcEngine
         /// </summary>
         private static readonly string LVALUE_DEFAULT_NAME = "__av__";
         private static readonly string DEFAULT_VARIABLE_NAME_FORMAT = @"^((?<name>({0}))+(?<num>([\d]\d*))?)?$";
-        private static readonly List<string> KeyWords = new List<string>() { VARIABLE_INDICATOR, RETURN_PROPERTY_INDICATOR, THIS, ROOT, CHANGED };
+        private static readonly List<string> KEY_WORDS = new List<string>() { VARIABLE_INDICATOR, RETURN_PROPERTY_INDICATOR, THIS, ROOT, CHANGED };
+        private static readonly List<char> GROUP_SEPERATORS = new List<char>() { '(', ')', START_CONTEXT_CHAR, END_CONTEXT_CHAR };
 
 
         /// <summary>
@@ -95,38 +93,31 @@ namespace CalcEngine
         /// <summary>
         /// Character used in calculations to seperator <see cref="lValue"/> from the <see cref="Expression"/>
         /// </summary>
-        static public readonly string LVALUE_SEPERATOR = "=";
+        public const string LVALUE_SEPERATOR = "=";
 
         /// <summary>
         /// Character used to indicate a variable in the <see cref="lValue"/> of the calculation. The VARIABLE_INDICATOR should be
         /// omitted when using the variable in an <see cref="Expression"/>
         /// </summary>
-        static public readonly string VARIABLE_INDICATOR = "var ";
+        public const string VARIABLE_INDICATOR = "var ";
 
         /// <summary>
         /// Character used to indicate the return value in the <see cref="lValue"/> of the calculation. The RETURN_PROPERTY_INDICATOR 
         /// should be omitted when using the variable in an <see cref="Expression"/>
         /// </summary>
-        static public readonly string RETURN_PROPERTY_INDICATOR = "return ";
+        public const string RETURN_PROPERTY_INDICATOR = "return ";
 
         /// <summary>
         /// Character used to seperate a sequence of calculations when using the <see cref="EvalExprIF"/> and 
         /// <see cref="ExecuteExpr"/> functions. The CALCULATION_SEPERATOR is used to seperate the nested calculations.
         /// </summary>
-        static public readonly char CALCULATION_SEPERATOR  = ';';
-
-        ///// <summary>
-        ///// Character used to seperate a sequence of calculations when using the <see cref="EvalExprIF"/> and 
-        ///// <see cref="ExecuteExpr"/> functions. The CALCULATION_SEPERATOR2 is used to seperate calculations. It can be used in place 
-        ///// of the CALCULATION_SEPERATOR and as a calculation termination character.
-        ///// </summary>
-        //static public readonly char CALCULATION_SEPERATOR2 = ';';
+        public const char CALCULATION_SEPERATOR  = ';';
 
         /// <summary>
         /// Character used at the end of a line to indicate the line continues on the next line. This character will be removed 
         /// from the input and the next line will be appended to this line.
         /// </summary>
-        static public readonly char LINE_CONTINUATION_CHAR = '&';
+        public const char LINE_CONTINUATION_CHAR = '&';
 
         /// <summary>
         /// Character sequences that indicate the start of a comment line. Comment lines will be removed from the calculations. 
@@ -134,33 +125,31 @@ namespace CalcEngine
         static public readonly string[] LINE_COMMENT_INDICATORS = { "//", "/*", "#region", "#endregion" };
 
         /// <summary>
-        /// Character used to start context grouping within calculations when using the <see cref="EvalExprIF"/> and 
-        /// <see cref="ExecuteExpr"/> functions.
+        /// Character used to start context grouping within calculations when using the <see cref="EvalExprIF"/>, 
+        /// <see cref="ExecuteExpr"/> and other functions.
         /// </summary>
-        static public readonly string START_CONTEXT = "{";
-        static public readonly char START_CONTEXT_CHAR = '{';
+        public const char START_CONTEXT_CHAR = '{';
 
         /// <summary>
-        /// Character used to end context grouping within calculations when using the <see cref="EvalExprIF"/> and 
-        /// <see cref="ExecuteExpr"/> functions.
+        /// Character used to end context grouping within calculations when using the <see cref="EvalExprIF"/>, 
+        /// <see cref="ExecuteExpr"/> and other functions.
         /// </summary>
-        static public readonly string END_CONTEXT = "}";
-        static public readonly char END_CONTEXT_CHAR = '}';
+        public const char END_CONTEXT_CHAR = '}';
 
         /// <summary>
         /// Variable containing reference to the enumerator data context
         /// </summary>
-        static public readonly string THIS = "this";
+        public const string THIS = "this";
 
         /// <summary>
         /// Variable containing reference to the root data context
         /// </summary>
-        static public readonly string ROOT = "root";
+        public const string ROOT = "root";
 
         /// <summary>
         /// Variable containing reference to the changed enumerator items
         /// </summary>
-        static public readonly string CHANGED = "_changed";
+        public const string CHANGED = "_changed";
 
         /// <summary>
         /// Set to false to disable resetting variables when they are used in sub-context calculation methods. 
@@ -352,14 +341,13 @@ namespace CalcEngine
                 calculation += nextCalc;
                 switch (calculation.Last())
                 {
-                    case '{':
+                    case START_CONTEXT_CHAR:
                     case ',':
                         continue;
-                    case '&':
-                        calculation = calculation.TrimEnd('&');
+                    case LINE_CONTINUATION_CHAR:
+                        calculation = calculation.TrimEnd(LINE_CONTINUATION_CHAR);
                         continue;
-                    //case '|': //ETM_REMOVE:
-                    case ';':
+                    case CALCULATION_SEPERATOR:
                         if (HasOpenNestedCalculation(calculation))
                             continue;
                         calculation = calculation.TrimEnd(calculation.Last());
@@ -398,10 +386,9 @@ namespace CalcEngine
         /// <returns></returns>
         private static string[] SeperateCalculation(string calculation)
         {
-            int indexOfSeperaor = calculation.IndexOf(LVALUE_SEPERATOR);
-            //int indexOfGroup = calculation.IndexOfAny("(){}|".ToCharArray()); //ETM_CHANGED:
-            int indexOfGroup = calculation.IndexOfAny("(){}".ToCharArray());
-            if (indexOfSeperaor < 0 || (indexOfGroup >=0 && indexOfSeperaor > indexOfGroup))
+            int indexOfSeperator = calculation.IndexOf(LVALUE_SEPERATOR);
+            int indexOfGroup = calculation.IndexOfAny(GROUP_SEPERATORS.ToArray());
+            if (indexOfSeperator < 0 || (indexOfGroup >=0 && indexOfSeperator > indexOfGroup))
                 return new string[] { calculation };
             else
                 return calculation.Split(LVALUE_SEPERATOR.ToCharArray(), 2);
@@ -419,8 +406,8 @@ namespace CalcEngine
             // Split into unit of work
             foreach (char c in calculation.ToCharArray())
             {
-                if (c == '{') nestedLevel++;
-                if (c == '}') nestedLevel--;
+                if (c == START_CONTEXT_CHAR) nestedLevel++;
+                if (c == END_CONTEXT_CHAR) nestedLevel--;
             }
             return nestedLevel != 0 ? true : false;
         }
@@ -495,8 +482,8 @@ namespace CalcEngine
                 {
                     propertyName = propertyName.Replace(VARIABLE_INDICATOR, string.Empty);
                     // variable name cannot be a keyword
-                    if (KeyWords.Contains(propertyName) == true)
-                        throw new Exception(string.Format("Invalid variable - keywords ({0}) are not allowed as variable names", string.Join(", ", KeyWords)));
+                    if (KEY_WORDS.Contains(propertyName) == true)
+                        throw new Exception(string.Format("Invalid variable - keywords ({0}) are not allowed as variable names", string.Join(", ", KEY_WORDS)));
 
                     if (!Variables.Keys.Contains(propertyName))
                         Variables.Add(propertyName, null);
@@ -1082,10 +1069,10 @@ namespace CalcEngine
             }
 
             // parse sub-context - starting with {
-            if (c == '{')
+            if (c == START_CONTEXT_CHAR)
             {
                 char strStartChar = c;
-                char strEndChar = '}';
+                char strEndChar = END_CONTEXT_CHAR;
                 int subContextCount = 0;
 
                 // look for end #
