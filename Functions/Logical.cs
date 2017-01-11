@@ -701,10 +701,9 @@ namespace CalcEngine.Functions
             // Split into unit of work
             foreach (char c in calculation.ToCharArray())
             {
-                if (c == '{') nestedLevel++;
-                if (c == '}') nestedLevel--;
+                if (c == CalcEngine.START_CONTEXT_CHAR) nestedLevel++;
+                if (c == CalcEngine.END_CONTEXT_CHAR) nestedLevel--;
 
-                //if ((c == CalcEngine.CALCULATION_SEPERATOR || c == CalcEngine.CALCULATION_SEPERATOR2) && nestedLevel == 0) //ETM_CHANGED:
                 if ((c == CalcEngine.CALCULATION_SEPERATOR) && nestedLevel == 0)
                 {
                     calculations.Add(unitOfWork.ToString());
