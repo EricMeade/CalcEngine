@@ -288,6 +288,15 @@ namespace CalcEngine.Functions
                 // Convert Dictionary to IList<KeyValuePair>
                 evaluatedExpression = (evaluatedExpression as IDictionary).OfType<object>();
             }
+            else if (expression is VariableExpression)
+            {
+                // If dynamic code, set evaluatedExpression to context of caller (which is CalcEngine.THIS)
+                var vxce = (expression as VariableExpression)._ce;
+                if (vxce.Variables.Keys.Any(v => v.StartsWith(Expression.DYNAMIC_CODE_DEFAULT_NAME) && vxce.Variables[v] == evaluatedExpression))
+                {
+                    evaluatedExpression = vxce.Variables[CalcEngine.THIS];
+                }
+            }
             IEnumerable<object> range = evaluatedExpression as IEnumerable<object>;
 
             // Build list of values in range and sumRange

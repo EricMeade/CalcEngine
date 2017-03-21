@@ -25,6 +25,7 @@ namespace CalcEngine
 
         internal Token _token;
         private static CultureInfo _ci = CultureInfo.InvariantCulture;
+        public static string DYNAMIC_CODE_DEFAULT_NAME = "__dynCode__";
 
         #endregion // fields
 
@@ -453,7 +454,6 @@ namespace CalcEngine
         override public object Evaluate()
         {
             object result = null;
-            string DYNAMIC_CODE_DEFAULT_NAME = "__dynCode__";
             string DEFAULT_DYNAMIC_CODE_NAME_FORMAT = @"^((?<name>({0}))+(?<num>([\d]\d*))?)?$";
 
             if (string.IsNullOrEmpty(_fn.DynamicCode))
@@ -474,9 +474,9 @@ namespace CalcEngine
                     _ce.Variables.Add(_fn.DynamicParameters[i], _parms[i].Evaluate());
 
                 // Pass code into function as varible so that we have the full CalcEngine context
-                _parms.Clear();
-                _parms.Add(new VariableExpression(_ce, _ce.Variables, dynCodeName));
-                result = _fn.Function(_parms);
+                var fnParams = new List<Expression>();
+                fnParams.Add(new VariableExpression(_ce, _ce.Variables, dynCodeName));
+                result = _fn.Function(fnParams);
                 // Remove added variables
                 for (int i = 0; _fn.DynamicParameters != null && i < _fn.DynamicParameters.Count; i++)
                     _ce.Variables.Remove(_fn.DynamicParameters[i]);
@@ -503,6 +503,7 @@ namespace CalcEngine
                 // named function can be registered with-in this instance of the CalcEngine.
                 var mInfo = _fn.Function.GetMethodInfo();
                 if (mInfo.Name  == "RegisterFunction")
+                //if (_fn.Function.Method.Name == "RegisterFunction")
                 {
                     _parms.Add(this);
                 }

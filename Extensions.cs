@@ -11,8 +11,14 @@ using System.Text.RegularExpressions;
 
 namespace CalcEngine
 {
+    public delegate object DeepCopyFunction(object source, Dictionary<object, object> copiedReferencesDict = null);
     public static class Extensions
     {
+        /// <summary>
+        /// Specify function to use to deep copy objects; if null, then deep copy is done by 
+        /// serializing and de-serializing the object.
+        /// </summary>
+        public static DeepCopyFunction OverrideDeepCopyFn = null;
         #region Public Methods
 
         /// <summary>
@@ -202,14 +208,21 @@ namespace CalcEngine
         /// <typeparam name="T">The type</typeparam>
         /// <param name="objectToCopy">The object to copy.</param>
         /// <returns>The copied object of the type T.</returns>
-        public static T DeepCopy<T>(this T objectToCopy)
+        public static T DeepCopy<T>(this T objectToCopy, Dictionary<object, object> copiedReferencesDict = null)
         {
-            using (MemoryStream memoryStream = new MemoryStream())
+            if (OverrideDeepCopyFn != null)
             {
-                BinaryFormatter binaryFormatter = new BinaryFormatter();
-                binaryFormatter.Serialize(memoryStream, objectToCopy);
-                memoryStream.Position = 0;
-                return (T)binaryFormatter.Deserialize(memoryStream);
+                return (T)OverrideDeepCopyFn(objectToCopy);
+            }
+            else
+            {
+                using (MemoryStream memoryStream = new MemoryStream())
+                {
+                    BinaryFormatter binaryFormatter = new BinaryFormatter();
+                    binaryFormatter.Serialize(memoryStream, objectToCopy);
+                    memoryStream.Position = 0;
+                    return (T)binaryFormatter.Deserialize(memoryStream);
+                }
             }
         }
         #endregion Public Methods
