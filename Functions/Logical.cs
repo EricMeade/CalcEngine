@@ -551,58 +551,65 @@ namespace CalcEngine.Functions
                     {
                         var propValue = obj.GetValue(propertyName);
 
-                        #region // make sure types are the same for 1st compare property
-                        if (propValue.GetType() != compareValue.GetType())
+                        // make sure we have a valid property
+                        if (propValue != null)
                         {
-                            if (propValue is Enum && !(compareValue is Enum))
+                            #region // Make sure types are the same for 1st compare property
+                            if (compareValue != null && propValue.GetType() != compareValue.GetType())
                             {
-                                compareValue = Enum.Parse(propValue.GetType(), compareValue.ToString()) as IComparable;
-                            }
-                            else if (compareValue is Enum && !(propValue is Enum))
-                            {
-                                propValue = Enum.Parse(compareValue.GetType(), propValue.ToString()) as IComparable;
-                            }
-                            else
-                            {
-                                compareValue = Convert.ChangeType(compareValue, propValue.GetType()) as IComparable;
-                            }
-                        }
-                        #endregion
-
-                        if (propValue.Equals(compareValue))
-                        {
-                            if (compareBothParams == true)
-                            {
-                                var prop2Value = obj.GetValue(property2Name);
-
-                                #region // make sure types are the same for 2nd compare property
-                                if (prop2Value.GetType() != compare2Value.GetType())
+                                if (propValue is Enum && !(compareValue is Enum))
                                 {
-                                    if (prop2Value is Enum && !(compare2Value is Enum))
+                                    compareValue = Enum.Parse(propValue.GetType(), compareValue.ToString()) as IComparable;
+                                }
+                                else if (compareValue is Enum && !(propValue is Enum))
+                                {
+                                    propValue = Enum.Parse(compareValue.GetType(), propValue.ToString()) as IComparable;
+                                }
+                                else
+                                {
+                                    compareValue = Convert.ChangeType(compareValue, propValue.GetType()) as IComparable;
+                                }
+                            }
+                            #endregion
+
+                            if (propValue.Equals(compareValue))
+                            {
+                                if (compareBothParams == true)
+                                {
+                                    var prop2Value = obj.GetValue(property2Name);
+
+                                    if (prop2Value != null)
                                     {
-                                        compare2Value = Enum.Parse(prop2Value.GetType(), compare2Value.ToString()) as IComparable;
-                                    }
-                                    else if (compare2Value is Enum && !(prop2Value is Enum))
-                                    {
-                                        prop2Value = Enum.Parse(compare2Value.GetType(), prop2Value.ToString()) as IComparable;
-                                    }
-                                    else
-                                    {
-                                        compare2Value = Convert.ChangeType(compare2Value, prop2Value.GetType()) as IComparable;
+                                        #region // make sure types are the same for 2nd compare property
+                                        if (compare2Value != null && prop2Value.GetType() != compare2Value.GetType())
+                                        {
+                                            if (prop2Value is Enum && !(compare2Value is Enum))
+                                            {
+                                                compare2Value = Enum.Parse(prop2Value.GetType(), compare2Value.ToString()) as IComparable;
+                                            }
+                                            else if (compare2Value is Enum && !(prop2Value is Enum))
+                                            {
+                                                prop2Value = Enum.Parse(compare2Value.GetType(), prop2Value.ToString()) as IComparable;
+                                            }
+                                            else
+                                            {
+                                                compare2Value = Convert.ChangeType(compare2Value, prop2Value.GetType()) as IComparable;
+                                            }
+                                        }
+                                        #endregion
+
+                                        if (prop2Value.Equals(compare2Value))
+                                        {
+                                            returnValue = obj;
+                                            break;
+                                        }
                                     }
                                 }
-                                #endregion
-
-                                if (prop2Value.Equals(compare2Value))
+                                else
                                 {
                                     returnValue = obj;
                                     break;
                                 }
-                            }
-                            else
-                            {
-                                returnValue = obj;
-                                break;
                             }
                         }
                     }

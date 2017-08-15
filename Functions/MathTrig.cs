@@ -268,14 +268,20 @@ namespace CalcEngine.Functions
 
             // build list of values in range and sumRange
             var rangeValues = new List<object>();
-            foreach (var value in range)
+            if (range != null)
             {
-                rangeValues.Add(value);
+                foreach (var value in range)
+                {
+                    rangeValues.Add(value);
+                }
             }
             var sumRangeValues = new List<object>();
-            foreach (var value in sumRange)
+            if (sumRange != null)
             {
-                sumRangeValues.Add(value);
+                foreach (var value in sumRange)
+                {
+                    sumRangeValues.Add(value);
+                }
             }
 
             //// compute total
@@ -368,9 +374,12 @@ namespace CalcEngine.Functions
 
             // build list of values in range and sumRange
             var rangeValues = new List<object>();
-            foreach (var value in range)
+            if (range != null)
             {
-                rangeValues.Add(value);
+                foreach (var value in range)
+                {
+                    rangeValues.Add(value);
+                }
             }
             // compute total
             var tally = new Tally();

@@ -152,6 +152,11 @@ namespace CalcEngine
         public const string CHANGED = "_changed";
 
         /// <summary>
+        /// Name of variable which overrides re-initializing of sub-context variables; set to false to override re-initializing of variables
+        /// </summary>
+        static public readonly string REINITSUBCONTEXTOVERRIDE = "_ReInitSubContextVariables";
+
+        /// <summary>
         /// Set to false to disable resetting variables when they are used in sub-context calculation methods. 
         /// </summary>
         public bool ReInitSubContextVariables = true;
@@ -243,7 +248,10 @@ namespace CalcEngine
                 foreach (Action<CalcEngine> registerFn in registerFnList)
                     registerFn(this);
             }
-            LoadCalculations(calculations);
+            if (calculations != null)
+            {
+                LoadCalculations(calculations);
+            }
         }
 
         #endregion // Constructors
@@ -434,14 +442,23 @@ namespace CalcEngine
             }
             else if (eqParams.Count() == 1)
             {
+                var rValue = eqParams[0].Trim();
+                // Check for return keyword so, if needed, it can be pre-pended
+                bool hasReturn = false;
+
+                if (rValue.StartsWith(RETURN_PROPERTY_INDICATOR) == true)
+                {
+                    hasReturn = true;
+                    rValue = rValue.Replace(RETURN_PROPERTY_INDICATOR, string.Empty);
+                }
                 // Initialize property name to next default variable name
                 List<string> existingNames = Variables.Keys.Where(k => k.Contains(LVALUE_DEFAULT_NAME)).ToList();
-                string propertyName = string.Format("{0}{1}", VARIABLE_INDICATOR, LVALUE_DEFAULT_NAME.GenerateVarName(DEFAULT_VARIABLE_NAME_FORMAT, existingNames));
-                AddCalculationMethod(propertyName, eqParams[0]);
+                string lValue = string.Format("{0}{1}{2}", (hasReturn == true) ? RETURN_PROPERTY_INDICATOR : string.Empty, VARIABLE_INDICATOR, LVALUE_DEFAULT_NAME.GenerateVarName(DEFAULT_VARIABLE_NAME_FORMAT, existingNames));
+                AddCalculationMethod(lValue, rValue);
             }
             else
             {
-                throw new Exception("Invalid expression - contained multiple LValues ('=' signs)");
+                throw new Exception(string.Format("Invalid expression - contains multiple expression seperators '{0}' - {1}", LVALUE_SEPERATOR, calculation));
             }
         }
 
@@ -482,8 +499,8 @@ namespace CalcEngine
                 {
                     propertyName = propertyName.Replace(VARIABLE_INDICATOR, string.Empty);
                     // variable name cannot be a keyword
-                    if (KEY_WORDS.Contains(propertyName) == true)
-                        throw new Exception(string.Format("Invalid variable - keywords ({0}) are not allowed as variable names", string.Join(", ", KEY_WORDS)));
+                    if (string.IsNullOrWhiteSpace(propertyName) == true || KEY_WORDS.Contains(propertyName) == true)
+                        throw new Exception(string.Format("Invalid variable '{0}' - keywords ({1}) are not allowed as variable names", propertyName, string.Join(", ", KEY_WORDS)));
 
                     if (!Variables.Keys.Contains(propertyName))
                         Variables.Add(propertyName, null);
@@ -497,6 +514,11 @@ namespace CalcEngine
                 // if property is a variable and expression is a literal, then update the variable with literal value 
                 if (isVariable == true && parsedExpression.IsLiteral == true)
                 {
+                    // Override ReInitSubContextVariables
+                    if (propertyName == REINITSUBCONTEXTOVERRIDE)
+                    {
+                        ReInitSubContextVariables = (bool)parsedExpression.Evaluate();
+                    }
                     Variables[propertyName] = parsedExpression.Evaluate();
                     loadCalculation = false;
                 }
