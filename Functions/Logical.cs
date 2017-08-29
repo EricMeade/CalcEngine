@@ -28,6 +28,8 @@ namespace CalcEngine.Functions
             ce.RegisterFunction("GETPROPERTY", 2, GetProperty);
             ce.RegisterFunction("SETPROPERTY", 3, SetProperty);
             ce.RegisterFunction("ELEMENTAT", 2, 5, ElementAt);
+            ce.RegisterFunction("FIRSTORDEFAULT", 3, int.MaxValue, FirstOrDefault);
+            ce.RegisterFunction("SELECTWHERE", 3, int.MaxValue, SelectWhere);
             ce.RegisterFunction("DEEPCOPY", 1, DeepCopy);
             ce.RegisterFunction("NEW", 1, int.MaxValue, New);
             ce.RegisterFunction("THROWEX", 1, int.MaxValue, ThrowEx);
@@ -77,6 +79,8 @@ namespace CalcEngine.Functions
         }
 
 #endif
+
+        struct CompareItem { public string propertyName; public object compareValue; }
 
         private static object And(List<Expression> p)
         {
@@ -616,6 +620,170 @@ namespace CalcEngine.Functions
                 }
             }
             return returnValue;
+        }
+
+        /// <summary>
+        /// Returns element that matches specified criteria
+        /// <example>FIRSTORDEFAULT(collection, propertyName, propertyValue [,...][,defaultValue])</example>
+        /// </summary>
+        /// <param name="p">The list of expressions/parameters
+        ///     p[0]=IEnumerable<object>,
+        ///     p[1]=Property name (string),
+        ///     p[2]=Property value
+        ///     p[3]=Property2 name - Optional,
+        ///     p[4]=Property2 value - Only used if Property2 name is specified
+        ///     :
+        ///     p[N]=PropertyN name - Optional,
+        ///     p[N+1]=PropertyN value - Only used if PropertyN name is specified
+        ///     p[N+2]=Default value - Optional
+        /// </param>
+        /// <returns>Element matching specified criteria or default value, if specified; otherwise, null</returns>
+        private static object FirstOrDefault(List<Expression> p)
+        {
+            object selectedValue = null;
+
+            IEnumerable<object> collection = p[0].Evaluate() as IEnumerable<object>;
+            if (collection != null && collection.Count() != 0)
+            {
+                // Initialize default value, if specified
+                if ((p.Count % 2) == 0)
+                {
+                    selectedValue = p.Last().Evaluate();
+                }
+
+                // Initialize compare property list
+                int comparePropertyCount = (p.Count() - 1) / 2;
+                var comparePropertyList = new CompareItem[comparePropertyCount];
+                for (int i = 0, idx = 1; i < comparePropertyCount; i++)
+                {
+                    comparePropertyList[i] = new CompareItem()
+                    {
+                        propertyName = p[idx++].Evaluate() as string,
+                        compareValue = p[idx++].Evaluate()
+                    };
+                }
+
+                foreach (var obj in collection)
+                {
+                    int successfulCompares = 0;
+                    for (int i = 0; i < comparePropertyList.Count(); i++)
+                    {
+                        var item = comparePropertyList[i];
+                        var propValue = obj.GetValue<object>(item.propertyName);
+                        // make sure we have a valid property
+                        if (propValue != null)
+                        {
+                            #region // Make sure types are the same for 1st compare property
+                            if (item.compareValue != null && propValue.GetType() != item.compareValue.GetType())
+                            {
+                                if (propValue is Enum && !(item.compareValue is Enum))
+                                {
+                                    item.compareValue = Enum.Parse(propValue.GetType(), item.compareValue.ToString()) as IComparable;
+                                }
+                                else if (item.compareValue is Enum && !(propValue is Enum))
+                                {
+                                    propValue = Enum.Parse(item.compareValue.GetType(), propValue.ToString()) as IComparable;
+                                }
+                                else
+                                {
+                                    item.compareValue = Convert.ChangeType(item.compareValue, propValue.GetType()) as IComparable;
+                                }
+                            }
+                            #endregion
+
+                            if (!propValue.Equals(item.compareValue))
+                                break;
+
+                            successfulCompares++;
+                        }
+                    }
+
+                    if (successfulCompares == comparePropertyCount)
+                    {
+                        selectedValue = obj;
+                        break;
+                    }
+                }
+            }
+            return selectedValue;
+        }
+
+        /// <summary>
+        /// Returns IENumerable of elements that matches specified criteria
+        /// <example>SELECTWHERE(collection, propertyName, propertyValue [,...])</example>
+        /// </summary>
+        /// <param name="p">The list of expressions/parameters
+        ///     p[0]=IEnumerable<object>,
+        ///     p[1]=Property name (string),
+        ///     p[2]=Property value
+        ///     p[3]=Property2 name - Optional,
+        ///     p[4]=Property2 value - Only used if Property2 name is specified
+        ///     :
+        ///     p[N]=PropertyN name - Optional,
+        ///     p[N+1]=PropertyN value - Only used if PropertyN name is specified
+        /// </param>
+        /// <returns>IEnumerable of objects matching specified criteria</returns>
+        private static object SelectWhere(List<Expression> p)
+        {
+            List<object> selectedValues = new List<object>();
+
+            IEnumerable<object> collection = p[0].Evaluate() as IEnumerable<object>;
+            if (collection != null && collection.Count() != 0)
+            {
+                // Initialize compare property list
+                int comparePropertyCount = (p.Count() - 1) / 2;
+                var comparePropertyList = new CompareItem[comparePropertyCount];
+                for (int i = 0, idx = 1; i < comparePropertyCount; i++)
+                {
+                    comparePropertyList[i] = new CompareItem()
+                    {
+                        propertyName = p[idx++].Evaluate() as string,
+                        compareValue = p[idx++].Evaluate()
+                    };
+                }
+
+                foreach (var obj in collection)
+                {
+                    int successfulCompares = 0;
+                    for (int i = 0; i < comparePropertyList.Count(); i++)
+                    {
+                        var item = comparePropertyList[i];
+                        var propValue = obj.GetValue<object>(item.propertyName);
+                        // make sure we have a valid property
+                        if (propValue != null)
+                        {
+                            #region // Make sure types are the same for 1st compare property
+                            if (item.compareValue != null && propValue.GetType() != item.compareValue.GetType())
+                            {
+                                if (propValue is Enum && !(item.compareValue is Enum))
+                                {
+                                    item.compareValue = Enum.Parse(propValue.GetType(), item.compareValue.ToString()) as IComparable;
+                                }
+                                else if (item.compareValue is Enum && !(propValue is Enum))
+                                {
+                                    propValue = Enum.Parse(item.compareValue.GetType(), propValue.ToString()) as IComparable;
+                                }
+                                else
+                                {
+                                    item.compareValue = Convert.ChangeType(item.compareValue, propValue.GetType()) as IComparable;
+                                }
+                            }
+                            #endregion
+
+                            if (!propValue.Equals(item.compareValue))
+                                break;
+
+                            successfulCompares++;
+                        }
+                    }
+
+                    if (successfulCompares == comparePropertyCount)
+                    {
+                        selectedValues.Add(obj);
+                    }
+                }
+            }
+            return selectedValues;
         }
 
         /// <summary>
